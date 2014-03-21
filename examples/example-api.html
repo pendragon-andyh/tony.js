@@ -1,0 +1,214 @@
+﻿<!DOCTYPE html>
+<html lang="en" >
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tony.js - API examples</title>
+    
+    <link rel="Stylesheet" href="3rd-party/bootstrap-3.1.1-dist/css/bootstrap.min.css" />
+    <link rel="Stylesheet" href="3rd-party/bootstrap-3.1.1-dist/css/bootstrap-theme.min.css" />
+    <style type="text/css">
+    	.jumbotron {margin-bottom:0;padding-top:28px;padding-bottom:30px;}
+    </style>
+    
+    <script type="text/javascript" src="3rd-party/jquery/jquery-2.1.0.min.js"></script>
+    <script type="text/javascript" src="3rd-party/bootstrap-3.1.1-dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../src/tony-core.js"></script>
+</head>
+<body>
+	<div class="jumbotron">
+		<div class="container">
+			<h1>Tony.js - API Examples</h1>
+			<p>This page contains various examples that use the Tony.js library to access the Web Audio API.</p>
+			<p>GitHub - <a href="//github.com.com/pendragon-andyh/tony.js">//github.com.com/pendragon-andyh/tony.js</a></p>
+		</div>
+	</div>
+
+	<div class="container">
+		<h2>Doing stuff with the AudioContextProxy</h2>
+		<ul>
+			<li>Creating a new AudioContext proxy
+				<pre class="example-code">
+				//Use the "tony" constructor. If you don't pass-in an AudioContext object then tony will create a singleton for the page.
+				var ac = tony();
+				alert("AudioContextProxy created.  Your sample rate is " + ac.sampleRate);
+				</pre>
+			</li>
+			<li>Creating a sound (the long way)
+				<pre class="example-code">
+				var ac = tony();
+				var osc = ac.createOscillator();
+				osc.frequency=440;
+				osc.connect(ac.destination);
+				osc.start();
+				osc.stop(ac.currentTime + 0.5);
+				</pre>
+			</li>
+			<li>Using a settings object with simple values
+				<pre class="example-code">
+				var ac = tony();
+				
+				//All of the "createXxxxx" methods allow you to pass in a settings object to simplify creation.
+				var osc = ac.createOscillator({type:"sawtooth", frequency:440}).connect(ac.destination);
+				
+				//If the node has start and stop methods then we automatic add a play method.
+				osc.play(0.5, ac.currentTime);
+				</pre>
+			</li>
+			<li>Using a settings object to modulate an audio parameter
+				<pre class="example-code">
+				var ac = tony();
+				
+				//If a setting contains an array then it is used to automate the specified audio-parameter.
+				var osc = ac.createOscillator({type:"sawtooth", frequency:[440, [220, 0.25], [880, 0.25]]}).connect(ac.destination);
+				
+				//If the optional "when" parameter is not specified then the note plays immediately.
+				osc.play(0.5);
+				</pre>
+			</li>
+		</ul>
+
+		<h2>Composing new nodes</h2>
+		<ul>
+			<li>Scheduling a sound
+				<pre class="example-code">
+				var ac = tony();
+				
+				//Define the sound (.
+				var playFn=function(dest, settings){
+					var osc=this.createOscillator(
+						{
+							type: settings.waveType,
+							frequency: settings.frequency,
+							gain: [1, [0.2, .25], [0.4, .15]]
+						});
+					osc.connect(ac.destination);
+				};
+				var blip=ac.createInstrument(playFn, {waveType:"square", frequency:200, duration:0.3});
+				
+				//If the start-time is not specified then the sound will play immediately.
+				blip.play(69);
+								
+				//Play the sound in the future.
+				blip.play(68, ac.currentTime + 0.4);
+				
+				//Or we can pass a settings object in.
+				blip.play({note:71, duration:1, waveType:"sawtooth"}, ac.currentTime + 0.8);
+				</pre>
+			</li>
+			<li>Inventing new AudioNodes
+				<pre class="example-code">
+				//Create funky new custom oscillator node that we can use in our sounds.
+				tony.AudioContextProxy.prototype.createMyNewOscillator=function(settings) {
+					return this.createComposite(function(dest, settings) {
+						//Create 2 oscillators - offset by 4hz so that they will "beat" 4 times per second.
+						var osc1=this.createOscillator({ frequency: 0 }).connect(dest);
+						var osc2=this.createOscillator({ frequency: 4 }).connect(dest);
+
+						//Create and expose "frequency"/"detune" parameters.
+						this.frequency=this.createParam(440).connect(osc1.frequency).connect(osc2.frequency);
+						this.detune=this.createParam(0).connect(osc1.detune).connect(osc2.detune);
+					}, settings);
+				};
+				
+				//Use the new node.
+				var ac = tony();
+				var osc=ac.createMyNewOscillator({ frequency: [220, [440, 1]], gain: 1 }).connect(ac.destination);
+				osc.play(1);
+				</pre>
+			</li>
+		</ul>
+		
+		<h2>The "window.tony" object</h2>
+		<ul>
+			<li>Creating an AudioBuffer for later-playback
+				<pre class="example-code">
+				//Create audio-buffer containing short sample of sound.
+				var t=tony.compileOfflineAudioBuffer(1, 75, 48000,
+					function(dest) {
+						//Create a 880hz square-wave with envelope.
+						var osc=this.createOscillator({ type: "square", frequency: 880, gain: [0.5, [1, .01], [0, .05]] }).connect(dest);
+						osc.play(0.5);
+					},
+					function(output) {
+						//Do something with the result buffer.
+						alert("Created sound data is:\n\n" + Array.prototype.join.call(output.getChannelData(0), ", "));
+					}
+				);
+				</pre>
+			</li>
+			<li>Calculate frequency from a MIDI note number
+				<pre class="example-code">
+				alert(
+					"The frequency for middle-A (note 69) is " + tony.convertNoteToFrequency(69) + "\n"+
+					"and an octave higher (note 81) is " + tony.convertNoteToFrequency(81)
+				);
+				</pre>
+			</li>
+		</ul>
+		
+		<h2>Other examples</h2>
+		<ul>
+			<li><a href="example-supersaw.html">Supersaw oscillator</a></li>
+		</ul>
+	</div>
+
+	<script type="text/javascript">
+		$(function() {
+			//Yell if JavaScript goes wrong.
+			window.onerror=function(msg, url, line) {
+				alert("An error occurred: "+msg+"\nAt line "+line);
+			};
+
+			//Make example code runnable.
+			$("pre.example-code").hide().each(function() {
+				var $x=$(this);
+
+				//Get the JavaScript example and strip leading spaces.
+				var content=stripLeadingSpaces(this.innerText);
+				this.innerText=content;
+
+				//Add links before the example.
+				$('<span> | <a class="example-toggle" href="javascript:">Show/hide</a></span>').click(function() {
+					if($x.is(":hidden")) { $("pre.example-code").hide(); }
+					$x.toggle();
+				}).insertBefore(this);
+				$('<span> | <a class="example-run" href="javascript:">Run example</a> |</span>').click(function() {
+					eval(content);
+				}).insertBefore(this);
+			});
+		});
+
+		function stripLeadingSpaces(content) {
+			var newContent="", isFirstLine=true, isNonSpaceFound=false, leadingSpaceCount=0, currentLineSpaceCount=0;
+			var inputChars=content.replace(/\t/g, "  ").split("");
+			for(var i in inputChars) {
+				var c=inputChars[i];
+
+				if(!isNonSpaceFound&&c==" ") {
+					if(isFirstLine) {
+						leadingSpaceCount++;
+						currentLineSpaceCount++;
+					}
+
+					if(currentLineSpaceCount) {
+						c="";
+						currentLineSpaceCount--;
+					}
+				} else {
+					isNonSpaceFound=true;
+				}
+
+				if(c=="\n"||c=="\r") {
+					currentLineSpaceCount=leadingSpaceCount;
+					isFirstLine=false;
+					isNonSpaceFound=false;
+				}
+
+				newContent+=c;
+			}
+			return newContent;
+		}
+	</script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+﻿<!DOCTYPE html>
+<html lang="en" >
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tony.js - Supersaw example</title>
+    
+    <link rel="Stylesheet" href="3rd-party/bootstrap-3.1.1-dist/css/bootstrap.min.css" />
+    <link rel="Stylesheet" href="3rd-party/bootstrap-3.1.1-dist/css/bootstrap-theme.min.css" />
+    <style type="text/css">
+    	.jumbotron {margin-bottom:20px;padding-top:28px;padding-bottom:30px;}
+    	.panel-control {position:relative;border-bottom:dotted 1px #ccf;}
+    	.panel-control:first-child {border-top:dotted 1px #ccf;}
+    	.panel {max-width:550px;}
+    	.panel-control label {width:20%;display:inline-block;}
+    	.panel-control input[type=range] {width:60%;display:inline-block;position:relative;top:6px;}
+    	.panel-control input[type=text] {width:15%;display:inline-block;margin-left:10px;height:25px;}
+    	.panel-control select {display:inline-block;width: 200px;margin:3px 0;padding: 0 2px 0 2px;height: 25px;}
+    	.panel-control canvas {width:100%;}
+    </style>
+    
+    <script type="text/javascript" src="3rd-party/jquery/jquery-2.1.0.min.js"></script>
+    <script type="text/javascript" src="3rd-party/bootstrap-3.1.1-dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../src/tony-core.js"></script>
+    <script type="text/javascript" src="../src/tony-ext-supersaw1.js"></script>
+</head>
+<body>
+	<div class="jumbotron">
+		<div class="container">
+			<h1>Supersaw Example</h1>
+			<p>##here - text that mention Chris Lowe's Weekly thingy and the original supersaw article.</p>
+			<p>GitHub - <a href="//github.com.com/pendragon-andyh/tony.js">//github.com.com/pendragon-andyh/tony.js</a></p>
+		</div>
+	</div>
+
+	<div class="container">
+		<div class="row">
+			<div class="col-md-6">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<button id="btn-play" class="pull-right btn btn-success btn-xs">Play</button>
+						<strong>Oscillator</strong>
+					</div>
+					<div class="panel-body">
+						<div class="panel-control">
+							<label for="oscFrequency">Frequency</label>
+							<input type="range" id="oscFrequency" min="55" max="888" value="220" title="Frequency of the note (Hz)" />
+						</div>
+						<div class="panel-control">
+							<label for="oscDetune">Detune</label>
+							<input type="range" id="oscDetune" min="-1200" max="1200" value="0" title="Detune (cents)" />
+						</div>
+						<div class="panel-control">
+							<label for="oscWidth">Width</label>
+							<input type="range" id="oscWidth" min="0" max="100" value="50" data-multiplier="100" title="Width of the supersaw oscillators (between 0 and 1)" />
+						</div>
+						<div class="panel-control">
+							<label for="oscMix">Mix</label>
+							<input type="range" id="oscMix" min="0" max="100" value="50" data-multiplier="100" title="Mix between the central oscillator and the detuned ones (between 0 and 1)" />
+						</div>
+						<div class="panel-control">
+							<label for="oscDuration">Duration</label>
+							<input type="range" id="oscDuration" min="1" max="200" value="100" data-multiplier="100" title="Duration of the note (seconds)" />
+						</div>
+					</div>
+				</div>
+				
+				<div class="panel panel-default">
+					<div class="panel-heading"><strong>Filter</strong></div>
+					<div class="panel-body">
+						<div class="panel-control">
+							<label for="filterType">Type</label>
+							<select id="filterType" class="form-control" title="Type of filter">
+								<option selected="selected" value="lowpass">Lowpass</option>
+								<option value="highpass">Highpass</option>
+								<option value="bandpass">Bandpass</option>
+								<option value="notch">Notch (band-reject)</option>
+								<option value="allpass">Allpass</option>
+							</select>
+						</div>
+						<div class="panel-control">
+							<label for="filterFrequency">Frequency</label>
+							<input type="range" id="filterFrequency" min="55" max="8000" value="8000" title="Frequency of the filter (Hz)" />
+						</div>
+						<div class="panel-control">
+							<label for="filterDetune">Detune</label>
+							<input type="range" id="filterDetune" min="-1200" max="1200" value="0" title="Detune (cents)" />
+						</div>
+						<div class="panel-control">
+							<label for="filterQ">Q</label>
+							<input type="range" id="filterQ" min="1" max="10000" value="1000" data-multiplier="1000" title="Q factor" />
+						</div>
+					</div>
+				</div>
+				
+				<div class="panel panel-default">
+					<div class="panel-heading"><strong>Amplitude</strong></div>
+					<div class="panel-body">
+						<div class="panel-control">
+							<label for="ampGain">Gain</label>
+							<input type="range" id="ampGain" min="0" max="100" value="100" data-multiplier="100" />
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-md-6">
+				<div class="panel panel-default">
+					<div class="panel-heading"><strong>Analysis</strong></div>
+					<div class="panel-body">
+						<div class="panel-control">
+							<label for="analysis-spectrum">Spectrum</label>
+							<canvas id="analysis-spectrum" width="500" height="222"></canvas>
+						</div>
+						<div class="panel-control">
+							<label for="analysis-waveform">Waveform</label>
+							<canvas id="analysis-waveform" width="500" height="222"></canvas>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<script type="text/javascript">
+		var player=null, playing=false;
+
+		$("#btn-play").click(function() {
+			clearTimeout(player);
+			player=playNote();
+		});
+
+		$("select").change(function() {
+			clearTimeout(player);
+			player=setTimeout(playNote, 100);
+		});
+		
+		$("input[type=range]").each(function() {
+			var $x=$(this);
+			var minValue=$x.attr("min")-0;
+			var maxValue=$x.attr("max")-0;
+			var multiplier=$x.attr("data-multiplier");
+			if(multiplier) {
+				multiplier-=0;
+			} else {
+				multiplier=1;
+			}
+			var lastValue=$x.val()/multiplier;
+			var $tb=$('<input type="text" class="form-control"></input>').insertAfter($x).val(lastValue);
+
+			$x.change(function() {
+				$tb.val(lastValue=$x.val()/multiplier);
+				clearTimeout(player);
+				player=setTimeout(playNote, 100);
+			});
+
+			$tb.change(function() {
+				var val=$tb.val()*multiplier;
+				if(isNaN(val)) { val=lastValue; }
+				if(val<minValue) { val=minValue; }
+				if(val>maxValue) { val=maxValue; }
+				$x.val(val);
+				$x.change();
+			});
+		});
+
+		window.requestAnimFrame=(function() {
+			return window.requestAnimationFrame||
+				window.webkitRequestAnimationFrame||
+				window.mozRequestAnimationFrame||
+				window.oRequestAnimationFrame||
+				window.msRequestAnimationFrame||
+				function(callback, element) { window.setTimeout(callback, 1000/60); };
+		})();
+
+		function playNote() {
+			var ac=tony();
+
+			var playFn=function(dest, settings) {
+				var osc=this.createSupersaw1({
+					frequency: $("#oscFrequency").next("input[type=text]").val()-0,
+					detune: $("#oscDetune").next("input[type=text]").val()-0,
+					width: $("#oscWidth").next("input[type=text]").val()-0,
+					mix: $("#oscMix").next("input[type=text]").val()-0
+				});
+				var filter=this.createBiquadFilter({
+					type: $("#filterType").val(),
+					frequency: $("#filterFrequency").next("input[type=text]").val()-0,
+					detune: $("#filterDetune").next("input[type=text]").val()-0,
+					Q: $("#filterQ").next("input[type=text]").val()-0
+				});
+				var amp=this.createGain({
+					gain: $("#ampGain").next("input[type=text]").val()-0
+				});
+				var analyser=this.createAnalyser({ fftSize: 1024, minDecibels: -100, maxDecibels: 0, smoothingTimeConstant: 0.1 });
+
+				osc.connect(filter);
+				filter.connect(amp);
+				amp.connect(analyser);
+				amp.connect(dest);
+
+				var canvasSpectrum=document.getElementById("analysis-spectrum");
+				var canvasWaveform=document.getElementById("analysis-waveform");
+				var freqData=new Uint8Array(analyser.frequencyBinCount);
+				var waveData=new Uint8Array(analyser.fftSize);
+
+				var ctxSpectrum=canvasSpectrum.getContext('2d');
+				var ctxWaveform=canvasWaveform.getContext('2d');
+				ctxSpectrum.fillStyle="blue";
+				ctxWaveform.fillStyle="blue";
+
+				drawSpectrum();
+				drawWaveform();
+
+				function drawSpectrum() {
+					requestAnimFrame(drawSpectrum, canvasSpectrum);
+
+					analyser.getByteFrequencyData(freqData);
+					var length=freqData.length;
+					var W=canvasSpectrum.width;
+					var H=canvasSpectrum.height;
+
+					ctxSpectrum.clearRect(0, 0, W, H);
+					ctxSpectrum.beginPath();
+					ctxSpectrum.fillStyle="#acd";
+					ctxSpectrum.moveTo(0, H);
+					var iStart=0;
+					var iStop=Math.floor(length/2);
+					var range=iStop-iStart;
+					for(var i=iStart;i<=iStop;++i) {
+						ctxSpectrum.lineTo(W*(i-iStart)/range, H*(1-(freqData[i]/256.0)));
+					}
+					ctxSpectrum.lineTo(W, H);
+					ctxSpectrum.fill();
+				}
+
+				function drawWaveform() {
+					requestAnimFrame(drawWaveform, canvasWaveform);
+
+					analyser.getByteTimeDomainData(waveData);
+					var length=waveData.length;
+					var W=canvasWaveform.width;
+					var H=canvasWaveform.height;
+
+					ctxWaveform.clearRect(0, 0, W, H);
+					ctxWaveform.beginPath();
+					ctxWaveform.strokeStyle="#acd";
+					ctxWaveform.moveTo(0, (0.1+0.8*waveData[0]/256.0)*H);
+					for(var i=0;i<length;++i) {
+						ctxWaveform.lineTo(W*i/length, (0.1+0.8*waveData[i]/256.0)*H);
+					}
+					ctxWaveform.stroke();
+				}
+			};
+			var instrument=ac.createInstrument(playFn, {
+				duration: $("#oscDuration").next("input[type=text]").val()-0
+			});
+
+			instrument.play(69);
+		}
+	</script>
+</body>
+</html>
