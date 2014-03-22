@@ -1,5 +1,5 @@
 ﻿/*!
-* Tony.JS WebAudio Library - http://github.com.com/pendragon-andyh/tony.js/
+* Tony.JS WebAudio Library - http://github.com/pendragon-andyh/tony.js/
 * Copyright 2014, Andy Harman
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
