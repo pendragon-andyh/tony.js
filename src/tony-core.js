@@ -279,57 +279,83 @@
 
 	/**
 	* Create a scriptProcessorNode to be used as a sound source (e.g. an oscillator).
-	* @param processingFn (function) - Function to perform JavaScript processing.
+	* @param bufferSize (int) - Number of samples to be processed in each frame.
 	* @param inputChannels (int) - Number of input channels.
+	* @param inputChannels (int) - Number of ouput channels.
+	* @param processingFn (function) - Function to perform JavaScript processing.
+	* @returns (ScriptProcessorNode)
 	*/
-	proto.createScriptSource=function(processingFn, inputChannels) {
-		//Create a ScriptProcessNode with one extra channel than specified.
-		var jsn=this.createScriptProcessor(0, (inputChannels||0)+1, 1), firstActive=null, lastActive=null;
+	proto.createScriptSource=function(bufferSize, inputChannels, outputChannels, processingFn) {
+		var factoryFn=function(bufferSize, inputChannels, outputChannels, processFn) {
+			//Create a ScriptProcessNode with one extra channel than specified.
+			var jsn=this.createScriptProcessor(bufferSize, (inputChannels||0)+1, outputChannels);
 
-		//Drive 1.0 through extra channel. Forces Node to stay alive - and shows exactly when processing starts/stops.
-		var b=this.createBuffer(1, 2, this.sampleRate), d=b.getChannelData(0);
-		d[0]=d[1]=value;
-		var oneNode=this.createObjectFromFactoryFunction(jsn.context, jsn.context.createScriptProcessor, { loop: true, buffer: b });
-		oneNode.connect(jsn, 0, inputChannels);
-		jsn.start=function(when) {
-			oneNode.start(when);
-		};
-		jsn.stop=function(when) {
-			oneNode.stop(when);
-		};
-		jsn.onended=oneNode.onended;
+			//Keep track of connections.
+			var connections=[], origConnect=jsn.connect;
+			jsn.connect=function(a, b, c) {
+				origConnect.apply(jsn, arguments);
+				connections.push([a, b]);
+				return this;
+			};
 
-		jsn.lookupBufferValue=function(pos, data) {
-			var len=data.length;
-			var indexF=(pos%1)*len, index1= ~ ~indexF, interpolationFactor=indexF-index1, index2=index1+1;
-			return ((1-interpolationFactor)*data[index1])+(interpolationFactor*(data[index2]||data[0]));
-		};
-		jsn.calcSawtoothValue=function(pos) {
-			return ((pos%1)*2)-1;
-		};
+			//Drive 1.0 through extra channel. Forces Node to stay alive - and shows exactly when processing starts/stops.
+			var buffer=this.createBuffer(1, 2, this.sampleRate), d=buffer.getChannelData(0);
+			d[0]=d[1]=1;
+			var mergeToChannel=this.createChannelMerger((inputChannels||0)+1);
+			mergeToChannel.connect(jsn);
+			var oneNode=this.createBufferSource();
+			oneNode.loop=true;
+			oneNode.buffer=buffer;
+			oneNode.connect(mergeToChannel, 0, inputChannels);
+			jsn.start=function(when) {
+				oneNode.start(when);
+			};
+			jsn.stop=function(when) {
+				oneNode.stop(when);
+			};
 
-		jsn.onaudioprocess=function(ev) {
-			if(lastActive==null) {
-				//Check if processing should start.
-				var activeData=ev.inputBuffer.getChannelData(inputChannels), len=activeData.length;
-				if(firstActive==null) {
-					for(var i=0;i<len;i++) { if(activeData[i]) { firstActive=i; } }
-				}
+			//Disconnect all outputs when the node is supposed to finish.  Allows garbage-collection.
+			oneNode.onended=function() {
+				while(connections.length) { jsn.disconnect.apply(jsn, connections.pop()); }
+				return this;
+			};
 
-				if(firstActive!=null) {
-					//Check if processing should stop.
-					if(!activeData[len-1]) {
-						for(var i=firstActive+1;i<len;i++) { if(!activeData[i]) { lastActive=i; } }
+			//Wrap the passed-in processing function - so that we only call it when the node is active.
+			var firstActive=null, lastActive=null;
+			jsn.onaudioprocess=function(ev) {
+				if(lastActive==null) {
+					//Check if processing should start.
+					var activeData=ev.inputBuffer.getChannelData(inputChannels), len=activeData.length;
+					if(firstActive==null) {
+						for(var i=0;i<len;i++) { if(activeData[i]) { firstActive=i; } }
 					}
 
-					//Do the real processing.
-					processingFn.call(jsn, ev, firstActive, lastActive||len, ev.inputBuffer, ev.outputBuffer);
-					firstActive=0;
-				}
-			}
-		}
+					if(firstActive!=null) {
+						//Check if processing should stop.
+						if(!activeData[len-1]) {
+							for(var i=firstActive+1;i<len;i++) { if(!activeData[i]) { lastActive=i; } }
+						}
 
-		return jsn;
+						//Do the real processing.
+						processingFn.call(jsn, ev, firstActive, lastActive||(len-1), ev.inputBuffer, ev.outputBuffer);
+						firstActive=0;
+					}
+				}
+			};
+
+			jsn.lookupBufferValue=function(pos, data) {
+				var len=data.length;
+				var indexF=(pos%1)*len, index1= ~ ~indexF, interpolationFactor=indexF-index1, index2=index1+1;
+				return ((1-interpolationFactor)*data[index1])+(interpolationFactor*(data[index2]||data[0]));
+			};
+			jsn.calcSawtoothValue=function(pos) {
+				return ((pos%1)*2)-1;
+			};
+
+			return jsn;
+		};
+
+		return this.enhanceNode(this.createObjectFromFactoryFunction(this.context, factoryFn, arguments));
 	};
 
 	/**
