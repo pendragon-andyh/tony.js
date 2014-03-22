@@ -7,22 +7,13 @@
     
     <link rel="Stylesheet" href="3rd-party/bootstrap-3.1.1-dist/css/bootstrap.min.css" />
     <link rel="Stylesheet" href="3rd-party/bootstrap-3.1.1-dist/css/bootstrap-theme.min.css" />
-    <style type="text/css">
-    	.jumbotron {margin-bottom:20px;padding-top:28px;padding-bottom:30px;}
-    	.panel-control {position:relative;border-bottom:dotted 1px #ccf;}
-    	.panel-control:first-child {border-top:dotted 1px #ccf;}
-    	.panel {max-width:550px;}
-    	.panel-control label {width:20%;display:inline-block;}
-    	.panel-control input[type=range] {width:60%;display:inline-block;position:relative;top:6px;}
-    	.panel-control input[type=text] {width:15%;display:inline-block;margin-left:10px;height:25px;}
-    	.panel-control select {display:inline-block;width: 200px;margin:3px 0;padding: 0 2px 0 2px;height: 25px;}
-    	.panel-control canvas {width:100%;}
-    </style>
-    
+    <link rel="Stylesheet" href="./assets/styles.css" />
+
     <script type="text/javascript" src="3rd-party/jquery/jquery-2.1.0.min.js"></script>
     <script type="text/javascript" src="3rd-party/bootstrap-3.1.1-dist/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="../src/tony-core.js"></script>
     <script type="text/javascript" src="../src/tony-ext-supersaw1.js"></script>
+    <script type="text/javascript" src="./assets/utils.js"></script>
 </head>
 <body>
 	<div class="jumbotron">
@@ -38,7 +29,7 @@
 
 	<div class="container">
 		<div class="row">
-			<div class="col-md-6">
+			<div class="col-md-6" id="synthControls">
 				<div class="panel panel-default">
 					<div class="panel-heading">
 						<button id="btn-play" class="pull-right btn btn-success btn-xs">Play</button>
@@ -126,55 +117,12 @@
 	</div>
 	
 	<script type="text/javascript">
-		var player=null, playing=false;
-
 		$("#btn-play").click(function() {
-			clearTimeout(player);
-			player=playNote();
+			playNote();
 		});
 
-		$("select").change(function() {
-			clearTimeout(player);
-			player=setTimeout(playNote, 100);
-		});
-		
-		$("input[type=range]").each(function() {
-			var $x=$(this);
-			var minValue=$x.attr("min")-0;
-			var maxValue=$x.attr("max")-0;
-			var multiplier=$x.attr("data-multiplier");
-			if(multiplier) {
-				multiplier-=0;
-			} else {
-				multiplier=1;
-			}
-			var lastValue=$x.val()/multiplier;
-			var $tb=$('<input type="text" class="form-control"></input>').insertAfter($x).val(lastValue);
-
-			$x.change(function() {
-				$tb.val(lastValue=$x.val()/multiplier);
-				clearTimeout(player);
-				player=setTimeout(playNote, 100);
-			});
-
-			$tb.change(function() {
-				var val=$tb.val()*multiplier;
-				if(isNaN(val)) { val=lastValue; }
-				if(val<minValue) { val=minValue; }
-				if(val>maxValue) { val=maxValue; }
-				$x.val(val);
-				$x.change();
-			});
-		});
-
-		window.requestAnimFrame=(function() {
-			return window.requestAnimationFrame||
-				window.webkitRequestAnimationFrame||
-				window.mozRequestAnimationFrame||
-				window.oRequestAnimationFrame||
-				window.msRequestAnimationFrame||
-				function(callback, element) { window.setTimeout(callback, 1000/60); };
-		})();
+		//Wire-up the controls for a synth's settings panel.
+		setupSynthControls($("#synthControls"), playNote, true);
 
 		function playNote() {
 			var ac=tony();

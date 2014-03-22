@@ -5,15 +5,14 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tony.js - API examples</title>
     
-    <link rel="Stylesheet" href="3rd-party/bootstrap-3.1.1-dist/css/bootstrap.min.css" />
-    <link rel="Stylesheet" href="3rd-party/bootstrap-3.1.1-dist/css/bootstrap-theme.min.css" />
-    <style type="text/css">
-    	.jumbotron {margin-bottom:0;padding-top:28px;padding-bottom:30px;}
-    </style>
+    <link rel="Stylesheet" href="./3rd-party/bootstrap-3.1.1-dist/css/bootstrap.min.css" />
+    <link rel="Stylesheet" href="./3rd-party/bootstrap-3.1.1-dist/css/bootstrap-theme.min.css" />
+    <link rel="Stylesheet" href="./assets/styles.css" />
     
-    <script type="text/javascript" src="3rd-party/jquery/jquery-2.1.0.min.js"></script>
-    <script type="text/javascript" src="3rd-party/bootstrap-3.1.1-dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="./3rd-party/jquery/jquery-2.1.0.min.js"></script>
+    <script type="text/javascript" src="./3rd-party/bootstrap-3.1.1-dist/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="../src/tony-core.js"></script>
+    <script type="text/javascript" src="./assets/utils.js"></script>
 </head>
 <body>
 	<div class="jumbotron">
@@ -161,54 +160,8 @@
 			};
 
 			//Make example code runnable.
-			$("pre.example-code").hide().each(function() {
-				var $x=$(this);
-
-				//Get the JavaScript example and strip leading spaces.
-				var content=stripLeadingSpaces(this.innerText);
-				this.innerText=content;
-
-				//Add links before the example.
-				$('<span> | <a class="example-toggle" href="javascript:">Show/hide</a></span>').click(function() {
-					if($x.is(":hidden")) { $("pre.example-code").hide(); }
-					$x.toggle();
-				}).insertBefore(this);
-				$('<span> | <a class="example-run" href="javascript:">Run example</a> |</span>').click(function() {
-					eval(content);
-				}).insertBefore(this);
-			});
+			makeExampleCodeRunable()
 		});
-
-		function stripLeadingSpaces(content) {
-			var newContent="", isFirstLine=true, isNonSpaceFound=false, leadingSpaceCount=0, currentLineSpaceCount=0;
-			var inputChars=content.replace(/\t/g, "  ").split("");
-			for(var i in inputChars) {
-				var c=inputChars[i];
-
-				if(!isNonSpaceFound&&c==" ") {
-					if(isFirstLine) {
-						leadingSpaceCount++;
-						currentLineSpaceCount++;
-					}
-
-					if(currentLineSpaceCount) {
-						c="";
-						currentLineSpaceCount--;
-					}
-				} else {
-					isNonSpaceFound=true;
-				}
-
-				if(c=="\n"||c=="\r") {
-					currentLineSpaceCount=leadingSpaceCount;
-					isFirstLine=false;
-					isNonSpaceFound=false;
-				}
-
-				newContent+=c;
-			}
-			return newContent;
-		}
 	</script>
 </body>
 </html>
