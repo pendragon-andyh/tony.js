@@ -19,7 +19,7 @@
 	<div class="jumbotron">
 		<div class="container">
 			<h1>Supersaw Example</h1>
-			<p>Chris Lowe's <a href="http://blog.chrislowis.co.uk/waw/2014/02/27/web-audio-weekly-9.html">Web Audio Weekly 9</a>
+			<p>Chris Lowis' <a href="http://blog.chrislowis.co.uk/waw/2014/02/27/web-audio-weekly-9.html">Web Audio Weekly 9</a>
 				contained an interesting link to an article <a href="http://www.ghostfact.com/jp-8000-supersaw/">exploring the
 				JP-8000 Supersaw oscillator</a>. I used this as a use-case to help me with the API for tony.js.  It doesn't
 				contain any modulation or envelopes at the moment because I was concentrating on getting the oscillator right.</p>
@@ -51,10 +51,6 @@
 						<div class="panel-control">
 							<label for="oscMix">Mix</label>
 							<input type="range" id="oscMix" min="0" max="100" value="50" data-multiplier="100" title="Mix between the central oscillator and the detuned ones (between 0 and 1)" />
-						</div>
-						<div class="panel-control">
-							<label for="oscDuration">Duration</label>
-							<input type="range" id="oscDuration" min="1" max="200" value="100" data-multiplier="100" title="Duration of the note (seconds)" />
 						</div>
 					</div>
 				</div>
@@ -117,98 +113,88 @@
 	</div>
 	
 	<script type="text/javascript">
-		$("#btn-play").click(function() {
-			playNote();
-		});
+		var ac=tony();
 
-		//Wire-up the controls for a synth's settings panel.
-		setupSynthControls($("#synthControls"), playNote, true);
+		$(function() {
+			//Create the analyser.
+			var analyser=ac.createAnalyser({ fftSize: 1024, minDecibels: -100, maxDecibels: 0, smoothingTimeConstant: 0 });
+			analyser.connect(ac.destination);
 
-		function playNote() {
-			var ac=tony();
-
+			//Define the instrument.
+			//Normally we would put lots of settings here (and have fewer perfSettings when playing the note).
+			var defaultSettings={};
 			var playFn=function(dest, settings) {
 				var osc=this.createSupersaw1({
-					frequency: $("#oscFrequency").next("input[type=text]").val()-0,
-					detune: $("#oscDetune").next("input[type=text]").val()-0,
-					width: $("#oscWidth").next("input[type=text]").val()-0,
-					mix: $("#oscMix").next("input[type=text]").val()-0
+					frequency: settings.oscFrequency,
+					detune: settings.oscDetune,
+					width: settings.oscWidth,
+					mix: settings.oscMix
 				});
 				var filter=this.createBiquadFilter({
-					type: $("#filterType").val(),
-					frequency: $("#filterFrequency").next("input[type=text]").val()-0,
-					detune: $("#filterDetune").next("input[type=text]").val()-0,
-					Q: $("#filterQ").next("input[type=text]").val()-0
+					type: settings.filterType,
+					frequency: settings.filterFrequency,
+					detune: settings.filterDetune,
+					Q: settings.filterQ
 				});
 				var amp=this.createGain({
-					gain: $("#ampGain").next("input[type=text]").val()-0
+					gain: settings.ampGain
 				});
-				var analyser=this.createAnalyser({ fftSize: 1024, minDecibels: -100, maxDecibels: 0, smoothingTimeConstant: 0.1 });
 
 				osc.connect(filter);
 				filter.connect(amp);
-				amp.connect(analyser);
 				amp.connect(dest);
-
-				var canvasSpectrum=document.getElementById("analysis-spectrum");
-				var canvasWaveform=document.getElementById("analysis-waveform");
-				var freqData=new Uint8Array(analyser.frequencyBinCount);
-				var waveData=new Uint8Array(analyser.fftSize);
-
-				var ctxSpectrum=canvasSpectrum.getContext('2d');
-				var ctxWaveform=canvasWaveform.getContext('2d');
-				ctxSpectrum.fillStyle="blue";
-				ctxWaveform.fillStyle="blue";
-
-				drawSpectrum();
-				drawWaveform();
-
-				function drawSpectrum() {
-					requestAnimFrame(drawSpectrum, canvasSpectrum);
-
-					analyser.getByteFrequencyData(freqData);
-					var length=freqData.length;
-					var W=canvasSpectrum.width;
-					var H=canvasSpectrum.height;
-
-					ctxSpectrum.clearRect(0, 0, W, H);
-					ctxSpectrum.beginPath();
-					ctxSpectrum.fillStyle="#acd";
-					ctxSpectrum.moveTo(0, H);
-					var iStart=0;
-					var iStop=Math.floor(length/2);
-					var range=iStop-iStart;
-					for(var i=iStart;i<=iStop;++i) {
-						ctxSpectrum.lineTo(W*(i-iStart)/range, H*(1-(freqData[i]/256.0)));
-					}
-					ctxSpectrum.lineTo(W, H);
-					ctxSpectrum.fill();
-				}
-
-				function drawWaveform() {
-					requestAnimFrame(drawWaveform, canvasWaveform);
-
-					analyser.getByteTimeDomainData(waveData);
-					var length=waveData.length;
-					var W=canvasWaveform.width;
-					var H=canvasWaveform.height;
-
-					ctxWaveform.clearRect(0, 0, W, H);
-					ctxWaveform.beginPath();
-					ctxWaveform.strokeStyle="#acd";
-					ctxWaveform.moveTo(0, (0.1+0.8*waveData[0]/256.0)*H);
-					for(var i=0;i<length;++i) {
-						ctxWaveform.lineTo(W*i/length, (0.1+0.8*waveData[i]/256.0)*H);
-					}
-					ctxWaveform.stroke();
-				}
 			};
-			var instrument=ac.createInstrument(playFn, {
-				duration: $("#oscDuration").next("input[type=text]").val()-0
-			});
+			var instrument=ac.createInstrument(playFn, defaultSettings, analyser);
 
-			instrument.play(69);
-		}
+			//Wire-up the controls for a synth's settings panel.
+			//The note will automatically play when you fiddle with the controls.
+			setupSynthControls($("#synthControls"), function() {
+				var startTime=ac.currentTime;
+				startNote(startTime).stop(startTime+0.5);
+			}, true);
+
+			//Play the note.
+			var currentNote=null;
+			$("#btn-play")
+				.on("mousedown touchstart", function() {
+					if(currentNote) {
+						currentNote.stop(ac.currentTime);
+					}
+					currentNote=startNote();
+				})
+				.on("mouseleave mouseup touchend touchcancel", function() {
+					if(currentNote) {
+						currentNote.stop(ac.currentTime+0.2);
+						currentNote=null;
+					}
+				});
+
+			//Render the analyser to the screen.
+			var canvasSpectrum=document.getElementById("analysis-spectrum");
+			var canvasWaveform=document.getElementById("analysis-waveform");
+			function scheduleAnalysis() {
+				renderAnalysis(canvasSpectrum, canvasWaveform, analyser);
+				requestAnimFrame(scheduleAnalysis, document);
+			}
+			scheduleAnalysis();
+
+			//Function that plays the note.
+			function startNote() {
+				var perfSettings={
+					oscFrequency: $("#oscFrequency").next("input[type=text]").val()-0,
+					oscDetune: $("#oscDetune").next("input[type=text]").val()-0,
+					oscWidth: $("#oscWidth").next("input[type=text]").val()-0,
+					oscMix: $("#oscMix").next("input[type=text]").val()-0,
+					filterType: $("#filterType").val(),
+					filterFrequency: $("#filterFrequency").next("input[type=text]").val()-0,
+					filterDetune: $("#filterDetune").next("input[type=text]").val()-0,
+					filterQ: $("#filterQ").next("input[type=text]").val()-0,
+					ampGain: $("#ampGain").next("input[type=text]").val()-0,
+					duration: $("#oscDuration").next("input[type=text]").val()-0
+				};
+				return instrument.start(perfSettings);
+			}
+		});
 	</script>
 </body>
 </html>

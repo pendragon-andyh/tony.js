@@ -141,3 +141,46 @@ window.requestAnimFrame=(function() {
 		window.msRequestAnimationFrame||
 		function(callback, element) { window.setTimeout(callback, 1000/60); };
 })();
+
+
+function renderAnalysis(canvasSpectrum, canvasWaveform, analyser) {
+	var ctxSpectrum=canvasSpectrum.getContext('2d');
+	ctxSpectrum.fillStyle="blue";
+
+	var freqData=new Uint8Array(analyser.frequencyBinCount);
+	analyser.getByteFrequencyData(freqData);
+	var length=freqData.length;
+	var W=canvasSpectrum.width;
+	var H=canvasSpectrum.height;
+
+	ctxSpectrum.clearRect(0, 0, W, H);
+	ctxSpectrum.beginPath();
+	ctxSpectrum.fillStyle="#acd";
+	ctxSpectrum.moveTo(0, H);
+	var iStart=0;
+	var iStop=Math.floor(length/2);
+	var range=iStop-iStart;
+	for(var i=iStart;i<=iStop;++i) {
+		ctxSpectrum.lineTo(W*(i-iStart)/range, H*(1-(freqData[i]/256.0)));
+	}
+	ctxSpectrum.lineTo(W, H);
+	ctxSpectrum.fill();
+
+	var ctxWaveform=canvasWaveform.getContext('2d');
+	ctxWaveform.fillStyle="blue";
+
+	var waveData=new Uint8Array(analyser.fftSize);
+	analyser.getByteTimeDomainData(waveData);
+	var length=waveData.length;
+	var W=canvasWaveform.width;
+	var H=canvasWaveform.height;
+
+	ctxWaveform.clearRect(0, 0, W, H);
+	ctxWaveform.beginPath();
+	ctxWaveform.strokeStyle="#acd";
+	ctxWaveform.moveTo(0, (0.1+0.8*waveData[0]/256.0)*H);
+	for(var i=0;i<length;++i) {
+		ctxWaveform.lineTo(W*i/length, (0.1+0.8*waveData[i]/256.0)*H);
+	}
+	ctxWaveform.stroke();
+}
