@@ -87,19 +87,15 @@
 							<label for="filterType">Type</label>
 							<select id="filterType" class="form-control" title="Type of filter">
 								<option selected="selected" value="lowpass">Lowpass</option>
-								<option value="highpass">Highpass</option>
 								<option value="bandpass">Bandpass</option>
+								<option value="highpass">Highpass</option>
 								<option value="notch">Notch (band-reject)</option>
 								<option value="allpass">Allpass</option>
 							</select>
 						</div>
 						<div class="panel-control">
-							<label for="filterFrequency">Frequency</label>
-							<input type="range" id="filterFrequency" min="55" max="8000" value="8000" title="Frequency of the filter (Hz)" />
-						</div>
-						<div class="panel-control">
-							<label for="filterDetune">Detune</label>
-							<input type="range" id="filterDetune" min="-1200" max="1200" value="0" title="Detune (cents)" />
+							<label for="filterCutoff">Cutoff</label>
+							<input type="range" id="filterCutoff" min="0" max="100" value="100" data-multiplier="100" title="Cutoff level" />
 						</div>
 						<div class="panel-control">
 							<label for="filterQ">Q</label>
@@ -153,31 +149,30 @@
 			//Normally we would put lots of settings here (and have fewer perfSettings when playing the note).
 			var defaultSettings={};
 			var playFn=function(dest, settings) {
-				var lfo=this.createOscillator({
-					type: settings.lfoType,
-					frequency: settings.lfoFrequency,
-					gain: settings.lfoDepth
-				});
+				var amp=this.createGain({
+					gain: settings.ampGain
+				}).connect(dest);
+				var filter=this.createBiquadFilter({
+					type: settings.filterType,
+					detune: settings.oscDetune,
+					Q: settings.filterQ
+				}).connect(amp);
 				var osc=this.createSupersaw1({
 					frequency: settings.oscFrequency,
 					detune: settings.oscDetune,
 					width: settings.oscWidth,
 					mix: settings.oscMix
-				});
-				var filter=this.createBiquadFilter({
-					type: settings.filterType,
-					frequency: settings.filterFrequency,
-					detune: settings.filterDetune,
-					Q: settings.filterQ
-				});
-				var amp=this.createGain({
-					gain: settings.ampGain
-				});
+				}).connect(filter);
+				var lfo=this.createOscillator({
+					type: settings.lfoType,
+					frequency: settings.lfoFrequency,
+					gain: settings.lfoDepth
+				}).connect(osc.detune);
 
-				lfo.connect(osc.detune);
-				osc.connect(filter);
-				filter.connect(amp);
-				amp.connect(dest);
+				var filterCutoff=this.createGain({
+					gain: settings.filterCutoff * 50
+				}).connect(filter.frequency);
+				osc.frequency.connect(filterCutoff);
 			};
 			var instrument=ac.createInstrument(playFn, defaultSettings, analyser);
 
@@ -225,8 +220,7 @@
 					oscWidth: $("#oscWidth").next("input[type=text]").val()-0,
 					oscMix: $("#oscMix").next("input[type=text]").val()-0,
 					filterType: $("#filterType").val(),
-					filterFrequency: $("#filterFrequency").next("input[type=text]").val()-0,
-					filterDetune: $("#filterDetune").next("input[type=text]").val()-0,
+					filterCutoff: $("#filterCutoff").next("input[type=text]").val()-0,
 					filterQ: $("#filterQ").next("input[type=text]").val()-0,
 					ampGain: $("#ampGain").next("input[type=text]").val()-0,
 					duration: $("#oscDuration").next("input[type=text]").val()-0
