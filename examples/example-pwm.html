@@ -1,0 +1,192 @@
+﻿<!DOCTYPE html>
+<html lang="en" >
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tony.js - Pulse Width Modulation example</title>
+    
+    <link rel="Stylesheet" href="3rd-party/bootstrap-3.1.1-dist/css/bootstrap.min.css" />
+    <link rel="Stylesheet" href="3rd-party/bootstrap-3.1.1-dist/css/bootstrap-theme.min.css" />
+    <link rel="Stylesheet" href="./assets/styles.css" />
+
+    <script type="text/javascript" src="3rd-party/jquery/jquery-2.1.0.min.js"></script>
+    <script type="text/javascript" src="3rd-party/bootstrap-3.1.1-dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../src/tony-core.js"></script>
+    <script type="text/javascript" src="../src/tony-ext-pwm1.js"></script>
+    <script type="text/javascript" src="./assets/utils.js"></script>
+</head>
+<body>
+	<div class="jumbotron">
+		<div class="container">
+			<h1>Pulse Width Modulation Example</h1>
+			<p>Analogue synths often contained the option to use a pulse-width-modulated waveform. This is like a square-wave,
+			but where you can modulate the mark-space-ratio of the waveform.</p>
+			<p>GitHub - <a href="//github.com/pendragon-andyh/tony.js">//github.com/pendragon-andyh/tony.js</a></p>
+		</div>
+	</div>
+
+	<div class="container">
+		<div class="row">
+			<div class="col-md-6" id="synthControls">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<button id="btn-play" class="pull-right btn btn-success btn-xs">Play</button>
+						<strong>Oscillator</strong>
+					</div>
+					<div class="panel-body">
+						<div class="panel-control">
+							<label for="oscFrequency">Frequency</label>
+							<input type="range" id="oscFrequency" min="55" max="888" value="110" title="Frequency of the note (Hz)" />
+						</div>
+						<div class="panel-control">
+							<label for="oscDetune">Detune</label>
+							<input type="range" id="oscDetune" min="-1200" max="1200" value="0" title="Detune (cents)" />
+						</div>
+						<div class="panel-control">
+							<label for="oscWidth">Width</label>
+							<input type="range" id="oscWidth" min="-100" max="100" value="0" data-multiplier="100" title="Ratio of the waveform's mark-space" />
+						</div>
+					</div>
+				</div>
+				
+				<div class="panel panel-default">
+					<div class="panel-heading"><strong>Filter</strong></div>
+					<div class="panel-body">
+						<div class="panel-control">
+							<label for="filterType">Type</label>
+							<select id="filterType" class="form-control" title="Type of filter">
+								<option selected="selected" value="lowpass">Lowpass</option>
+								<option value="highpass">Highpass</option>
+								<option value="bandpass">Bandpass</option>
+								<option value="notch">Notch (band-reject)</option>
+								<option value="allpass">Allpass</option>
+							</select>
+						</div>
+						<div class="panel-control">
+							<label for="filterFrequency">Frequency</label>
+							<input type="range" id="filterFrequency" min="55" max="8000" value="8000" title="Frequency of the filter (Hz)" />
+						</div>
+						<div class="panel-control">
+							<label for="filterDetune">Detune</label>
+							<input type="range" id="filterDetune" min="-1200" max="1200" value="0" title="Detune (cents)" />
+						</div>
+						<div class="panel-control">
+							<label for="filterQ">Q</label>
+							<input type="range" id="filterQ" min="1" max="10000" value="1000" data-multiplier="1000" title="Q factor" />
+						</div>
+					</div>
+				</div>
+				
+				<div class="panel panel-default">
+					<div class="panel-heading"><strong>Amplitude</strong></div>
+					<div class="panel-body">
+						<div class="panel-control">
+							<label for="ampGain">Gain</label>
+							<input type="range" id="ampGain" min="0" max="100" value="100" data-multiplier="100" />
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-md-6">
+				<div class="panel panel-default">
+					<div class="panel-heading"><strong>Analysis</strong></div>
+					<div class="panel-body">
+						<div class="panel-control">
+							<label for="analysis-spectrum">Spectrum</label>
+							<canvas id="analysis-spectrum" width="500" height="222"></canvas>
+						</div>
+						<div class="panel-control">
+							<label for="analysis-waveform">Waveform</label>
+							<canvas id="analysis-waveform" width="500" height="222"></canvas>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<script type="text/javascript">
+		var ac=tony();
+
+		$(function() {
+			//Create the analyser.
+			var analyser=ac.createAnalyser({ fftSize: 1024, minDecibels: -100, maxDecibels: 0, smoothingTimeConstant: 0 });
+			analyser.connect(ac.destination);
+
+			//Define the instrument.
+			//Normally we would put lots of settings here (and have fewer perfSettings when playing the note).
+			var defaultSettings={};
+			var playFn=function(dest, settings) {
+				var osc=this.createPwmOscillator1({
+					frequency: settings.oscFrequency,
+					detune: settings.oscDetune,
+					width: settings.oscWidth
+				});
+				var filter=this.createBiquadFilter({
+					type: settings.filterType,
+					frequency: settings.filterFrequency,
+					detune: settings.filterDetune,
+					Q: settings.filterQ
+				});
+				var amp=this.createGain({
+					gain: settings.ampGain
+				});
+
+				osc.connect(filter);
+				filter.connect(amp);
+				amp.connect(dest);
+			};
+			var instrument=ac.createInstrument(playFn, defaultSettings, analyser);
+
+			//Wire-up the controls for a synth's settings panel.
+			//The note will automatically play when you fiddle with the controls.
+			setupSynthControls($("#synthControls"), function() {
+				var startTime=ac.currentTime;
+				startNote(startTime).stop(startTime+0.5);
+			}, true);
+
+			//Play the note.
+			var currentNote=null;
+			$("#btn-play")
+				.on("mousedown touchstart", function() {
+					if(currentNote) {
+						currentNote.stop(ac.currentTime);
+					}
+					currentNote=startNote();
+				})
+				.on("mouseleave mouseup touchend touchcancel", function() {
+					if(currentNote) {
+						currentNote.stop(ac.currentTime+0.2);
+						currentNote=null;
+					}
+				});
+
+			//Render the analyser to the screen.
+			var canvasSpectrum=document.getElementById("analysis-spectrum");
+			var canvasWaveform=document.getElementById("analysis-waveform");
+			function scheduleAnalysis() {
+				renderAnalysis(canvasSpectrum, canvasWaveform, analyser);
+				requestAnimFrame(scheduleAnalysis, document);
+			}
+			scheduleAnalysis();
+
+			//Function that plays the note.
+			function startNote() {
+				var perfSettings={
+					oscFrequency: $("#oscFrequency").next("input[type=text]").val()-0,
+					oscDetune: $("#oscDetune").next("input[type=text]").val()-0,
+					oscWidth: $("#oscWidth").next("input[type=text]").val()-0,
+					filterType: $("#filterType").val(),
+					filterFrequency: $("#filterFrequency").next("input[type=text]").val()-0,
+					filterDetune: $("#filterDetune").next("input[type=text]").val()-0,
+					filterQ: $("#filterQ").next("input[type=text]").val()-0,
+					ampGain: $("#ampGain").next("input[type=text]").val()-0,
+					duration: $("#oscDuration").next("input[type=text]").val()-0
+				};
+				return instrument.start(perfSettings);
+			}
+		});
+	</script>
+</body>
+</html>
