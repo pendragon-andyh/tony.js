@@ -28,13 +28,17 @@
 		return this.createComposite(function(dest, settings) {
 			var one=this.createSingleValueSource(1);
 
-			//Create the oscillator.  Expose it's parameters on the composite node.
-			var osc=this.createOscillator({ type: "sine" });
-			this.frequency=osc.frequency;
-			this.detune=osc.detune;
+			//Expose parameters that can be configured and/or modulated from external nodes.
+			this.frequency=this.createParam(one, 440);
+			this.detune=this.createParam(one, 0);
+			this.width=this.createParam(one, 0.5);
+
+			//Create the oscillator.
+			var osc=this.createOscillator({ type: "sine", frequency:0 });
+			this.frequency.connect(osc.frequency);
+			this.detune.connect(osc.detune);
 
 			//Expose parameter to allow the mark-space ratio to be configured and/or modulated from external nodes.
-			this.width=this.createParam(one, 0.5);
 
 			//Use a wave shaper to convert the sine-wave into a square-ish wave.
 			//The are 256 points on the curve. The 1st 128 all result in -1, the second 128 result in +1.

@@ -28,6 +28,31 @@
 	<div class="container">
 		<div class="row">
 			<div class="col-md-6" id="synthControls">
+				<div class="panel panel-default" id="lfoPanel">
+					<div class="panel-heading">
+						<strong>LFO</strong>
+					</div>
+					<div class="panel-body">
+						<div class="panel-control">
+							<label for="filterType">Type</label>
+							<select id="lfoType" class="form-control" title="Waveform">
+								<option selected="selected" value="sine">Sine</option>
+								<option value="triangle">Triangle</option>
+								<option value="sawtooth">Sawtooth</option>
+								<option value="square">Square</option>
+							</select>
+						</div>
+						<div class="panel-control">
+							<label for="lfoFrequency">Frequency</label>
+							<input type="range" id="lfoFrequency" min="1" max="1000" value="500" data-multiplier="10" title="Frequency of the note (Hz)" />
+						</div>
+						<div class="panel-control">
+							<label for="lfoDepth">Depth</label>
+							<input type="range" id="lfoDepth" min="0" max="1200" value="0" title="Depth of modulation" />
+						</div>
+					</div>
+				</div>
+				
 				<div class="panel panel-default">
 					<div class="panel-heading">
 						<button id="btn-play" class="pull-right btn btn-success btn-xs">Play</button>
@@ -56,19 +81,15 @@
 							<label for="filterType">Type</label>
 							<select id="filterType" class="form-control" title="Type of filter">
 								<option selected="selected" value="lowpass">Lowpass</option>
-								<option value="highpass">Highpass</option>
 								<option value="bandpass">Bandpass</option>
+								<option value="highpass">Highpass</option>
 								<option value="notch">Notch (band-reject)</option>
 								<option value="allpass">Allpass</option>
 							</select>
 						</div>
 						<div class="panel-control">
-							<label for="filterFrequency">Frequency</label>
-							<input type="range" id="filterFrequency" min="55" max="8000" value="8000" title="Frequency of the filter (Hz)" />
-						</div>
-						<div class="panel-control">
-							<label for="filterDetune">Detune</label>
-							<input type="range" id="filterDetune" min="-1200" max="1200" value="0" title="Detune (cents)" />
+							<label for="filterCutoff">Cutoff</label>
+							<input type="range" id="filterCutoff" min="0" max="100" value="100" data-multiplier="100" title="Cutoff level" />
 						</div>
 						<div class="panel-control">
 							<label for="filterQ">Q</label>
@@ -114,28 +135,38 @@
 			var analyser=ac.createAnalyser({ fftSize: 1024, minDecibels: -100, maxDecibels: 0, smoothingTimeConstant: 0 });
 			analyser.connect(ac.destination);
 
+			//Use a zero-value source so that the analyser doesn't stop too quickly after note disconnects.
+			var zeroNode=ac.createSingleValueSource(0).start();
+			zeroNode.connect(analyser);
+
 			//Define the instrument.
 			//Normally we would put lots of settings here (and have fewer perfSettings when playing the note).
 			var defaultSettings={};
 			var playFn=function(dest, settings) {
+				var amp=this.createGain({
+					gain: settings.ampGain
+				}).connect(dest);
+				var filter=this.createBiquadFilter({
+					type: settings.filterType,
+					frequency: settings.oscFrequency,
+					detune: settings.oscDetune,
+					Q: settings.filterQ
+				}).connect(amp);
 				var osc=this.createPwmOscillator1({
 					frequency: settings.oscFrequency,
 					detune: settings.oscDetune,
 					width: settings.oscWidth
-				});
-				var filter=this.createBiquadFilter({
-					type: settings.filterType,
-					frequency: settings.filterFrequency,
-					detune: settings.filterDetune,
-					Q: settings.filterQ
-				});
-				var amp=this.createGain({
-					gain: settings.ampGain
-				});
+				}).connect(filter);
+				var lfo=this.createOscillator({
+					type: settings.lfoType,
+					frequency: settings.lfoFrequency,
+					gain: settings.lfoDepth
+				}).connect(osc.detune).connect(filter.detune);
 
-				osc.connect(filter);
-				filter.connect(amp);
-				amp.connect(dest);
+				var filterCutoff=this.createGain({
+					gain: settings.filterCutoff*50
+				}).connect(filter.frequency);
+				osc.frequency.connect(filterCutoff);
 			};
 			var instrument=ac.createInstrument(playFn, defaultSettings, analyser);
 
@@ -174,12 +205,14 @@
 			//Function that plays the note.
 			function startNote() {
 				var perfSettings={
+					lfoType: $("#lfoType").val(),
+					lfoFrequency: $("#lfoFrequency").next("input[type=text]").val()-0,
+					lfoDepth: $("#lfoDepth").next("input[type=text]").val()-0,
 					oscFrequency: $("#oscFrequency").next("input[type=text]").val()-0,
 					oscDetune: $("#oscDetune").next("input[type=text]").val()-0,
 					oscWidth: $("#oscWidth").next("input[type=text]").val()-0,
 					filterType: $("#filterType").val(),
-					filterFrequency: $("#filterFrequency").next("input[type=text]").val()-0,
-					filterDetune: $("#filterDetune").next("input[type=text]").val()-0,
+					filterCutoff: $("#filterCutoff").next("input[type=text]").val()-0,
 					filterQ: $("#filterQ").next("input[type=text]").val()-0,
 					ampGain: $("#ampGain").next("input[type=text]").val()-0,
 					duration: $("#oscDuration").next("input[type=text]").val()-0

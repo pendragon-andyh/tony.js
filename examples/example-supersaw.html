@@ -154,6 +154,7 @@
 				}).connect(dest);
 				var filter=this.createBiquadFilter({
 					type: settings.filterType,
+					frequency: settings.oscFrequency,
 					detune: settings.oscDetune,
 					Q: settings.filterQ
 				}).connect(amp);
@@ -167,7 +168,7 @@
 					type: settings.lfoType,
 					frequency: settings.lfoFrequency,
 					gain: settings.lfoDepth
-				}).connect(osc.detune);
+				}).connect(osc.detune).connect(filter.detune);
 
 				var filterCutoff=this.createGain({
 					gain: settings.filterCutoff * 50
