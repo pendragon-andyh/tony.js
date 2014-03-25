@@ -148,15 +148,17 @@
 				};
 			}
 			if(origStart||node.onStart) {
-				node.start=function(when) {
-					if(origStart) { origStart.apply(node, arguments); }
+				node.start=function(when, a, b) {
+				var startTime=when||(node.context?node.context.currentTime:0);
+				if(origStart) { origStart.call(node, startTime, a, b); }
 					if(node.onStart) { node.onStart(when); }
 					return node;
 				};
 			}
 			if(origStop||node.onStop) {
 				node.stop=function(when) {
-					if(origStop) { origStop.apply(node, arguments); }
+				var stopTime=when||(node.context?node.context.currentTime:0);
+				if(origStop) { origStop.call(node, stopTime); }
 					if(node.onStop) { node.onStop(when); }
 					return node;
 				};
@@ -371,7 +373,9 @@
 
 			//Use a gain-node to allow connection to other nodes.
 			var dest=parentProxy.createGain();
-			node.destination=dest;
+			Object.defineProperty(node, "destination", {
+				"get": function() { return dest; }
+			});
 			node.gain=dest.gain;
 			node.connect=function(a, b, c) {
 				dest.connect(a, b, c);
@@ -433,10 +437,10 @@
 			};
 
 			//Create a node that looks like a real AudioParam.
-			node.createParam=function(defaultValue) {
+			node.createParam=function(defaultValue, oneNode) {
 				//Drive 1.0 through a GainNode - so output reflects modulated value of "gain" property.
 				var gn=this.createGain({ gain: defaultValue });
-				this.createOne().connect(gn);
+				(oneNode||this.createOne()).connect(gn);
 				var param=gn.gain;
 
 				//Allow param to be connected to a specific destination channel.

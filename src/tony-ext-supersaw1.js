@@ -46,10 +46,10 @@
 			var one=this.createSingleValueSource(1);
 
 			//Expose parameters that can be configured and/or modulated from external nodes.
-			this.frequency=this.createParam(one, 440);
-			this.detune=this.createParam(one, 0);
-			this.width=this.createParam(one, 0.5);
-			this.mix=this.createParam(one, 0.7);
+			this.frequency=this.createParam(440, one);
+			this.detune=this.createParam(0, one);
+			this.width=this.createParam(0.5, one);
+			this.mix=this.createParam(0.7, one);
 
 			//Create a gain node for the level of the centre-oscillator (gain=1-mix).
 			var centreMix=this.createGain({ gain: 1 }).connect(dest);

@@ -95,7 +95,7 @@
 						</div>
 						<div class="panel-control">
 							<label for="filterCutoff">Cutoff</label>
-							<input type="range" id="filterCutoff" min="0" max="100" value="100" data-multiplier="100" title="Cutoff level" />
+							<input type="range" id="filterCutoff" min="0" max="1000" value="1000" data-multiplier="10" title="Cutoff level" />
 						</div>
 						<div class="panel-control">
 							<label for="filterQ">Q</label>
@@ -171,7 +171,7 @@
 				}).connect(osc.detune).connect(filter.detune);
 
 				var filterCutoff=this.createGain({
-					gain: settings.filterCutoff * 50
+					gain: settings.filterCutoff
 				}).connect(filter.frequency);
 				osc.frequency.connect(filterCutoff);
 			};
@@ -223,8 +223,7 @@
 					filterType: $("#filterType").val(),
 					filterCutoff: $("#filterCutoff").next("input[type=text]").val()-0,
 					filterQ: $("#filterQ").next("input[type=text]").val()-0,
-					ampGain: $("#ampGain").next("input[type=text]").val()-0,
-					duration: $("#oscDuration").next("input[type=text]").val()-0
+					ampGain: $("#ampGain").next("input[type=text]").val()-0
 				};
 				return instrument.start(perfSettings);
 			}

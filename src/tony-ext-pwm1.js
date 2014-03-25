@@ -29,12 +29,12 @@
 			var one=this.createSingleValueSource(1);
 
 			//Expose parameters that can be configured and/or modulated from external nodes.
-			this.frequency=this.createParam(one, 440);
-			this.detune=this.createParam(one, 0);
-			this.width=this.createParam(one, 0.5);
+			this.frequency=this.createParam(440, one);
+			this.detune=this.createParam(0, one);
+			this.width=this.createParam(0, one);
 
 			//Create the oscillator.
-			var osc=this.createOscillator({ type: "sine", frequency:0 });
+			var osc=this.createOscillator({ type: "triangle", frequency:0 });
 			this.frequency.connect(osc.frequency);
 			this.detune.connect(osc.detune);
 
@@ -50,7 +50,7 @@
 			var shaper=this.createWaveShaper({ curve: shape });
 			osc.connect(shaper);
 
-			//Normally the sine wave goes between -1 and +1.  By connection the "width" parameter we change the
+			//Normally the sine wave goes between -1 and +1.  By connecting the "width" parameter we change the
 			//wave-shaper's input to (width-1) and (width+1).
 			//The waveshaper will clip any values outside of the range of -1 and +1.
 			this.width.connect(shaper);

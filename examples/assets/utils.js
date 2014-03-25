@@ -23,8 +23,8 @@ function makeExampleCodeRunable(){
 		var $x=$(this);
 
 		//Get the JavaScript example and strip leading spaces.
-		var content=stripLeadingSpaces(this.innerText);
-		this.innerText=content;
+		var content=stripLeadingSpaces($x.text());
+		$x.text(content);
 
 		//Add links before the example ("Show/Hide" and "Run example").
 		var isVisible=false;
