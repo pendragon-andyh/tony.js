@@ -23,17 +23,17 @@
 	//				This can be modulated by the "width" parameter.
 	//				Values from www.ghostfact.com/jp-8000-supersaw/
 	// * gain - multiplier to set the gain-level of the oscillator.
-	//				Default to 1/6 because there are 6 detuned oscilators.
+	//				Default to 1/5 seems to work best (1/7 was averaging at half-volume)
 	//				Half are negative-gains to make distortion less likely.
 	// * isCentre - True for the central oscillator.
 	var oscFactors=[
-		{ detune: -0.107, gain: 1/6, type: "sawtooth" },
-		{ detune: -0.061, gain: -1/6, type: "sawtooth" },
-		{ detune: -0.0157, gain: 1/6, type: "sawtooth" },
-		{ detune: 0, gain: 1, isCentre: true, type: "sawtooth" },
-		{ detune: 0.02, gain: 1/6, type: "sawtooth" },
-		{ detune: 0.064, gain: -1/6, type: "sawtooth" },
-		{ detune: 0.11, gain: 1/6, type: "sawtooth" }
+		{ detune: -0.107, gain: -1/5 },
+		{ detune: -0.061, gain: 1/5 },
+		{ detune: -0.0157, gain: -1/5 },
+		{ detune: 0, gain: 1, isCentre: true },
+		{ detune: 0.02, gain: -1/5 },
+		{ detune: 0.064, gain: -1/5 },
+		{ detune: 0.11, gain: 1/5 }
 	];
 
 	/**
@@ -51,17 +51,16 @@
 			this.width=this.createParam(0.5, one);
 			this.mix=this.createParam(0.7, one);
 
-			//Create a gain node for the level of the centre-oscillator (gain=1-mix).
+			//Create a gain node for the level of the centre-oscillator (gain=1-(mix*4/5)).
 			var centreMix=this.createGain({ gain: 1 }).connect(dest);
-			var invertMixLevel=this.createGain({ gain: -1 }).connect(centreMix.gain);
-			this.mix.connect(invertMixLevel);
+			this.mix.connect(this.createGain({gain:-4/5}).connect(centreMix.gain));
 
-			//Create a gain node for the level of the detuned-oscillators (gain=mix).
+			//Create a gain node for the level of the detuned-oscillators (gain=mix/5).
 			var detuneMix=this.createGain({ gain: 0 }).connect(dest);
 			this.mix.connect(detuneMix.gain);
 
 			//Use exponential-scaling for the "width" parameter.
-			//The WaveshaperNode would give more control - but all browsers currently have broken implementation.
+			//The WaveshaperNode would give more control - but all browsers currently have asymetric implementations.
 			var nonLinearWidth=this.createGain({ gain: 0 });
 			this.width.connect(nonLinearWidth).connect(nonLinearWidth.gain);
 
@@ -70,7 +69,7 @@
 				var oscFactor=oscFactors[i];
 
 				//All oscillators share central frequency and detune so that they stay in sync.
-				var osc=this.createOscillator({ type: oscFactor.type, frequency: 0, gain: oscFactor.gain });
+				var osc=this.createOscillator({ type: "sawtooth", frequency: 0, gain: oscFactor.gain });
 				this.frequency.connect(osc.frequency);
 				this.detune.connect(osc.detune);
 
