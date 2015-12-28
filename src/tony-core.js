@@ -149,8 +149,13 @@
 			}
 			if(origStart||node.onStart) {
 				node.start=function(when, a, b) {
-				var startTime=when||(node.context?node.context.currentTime:0);
-				if(origStart) { origStart.call(node, startTime, a, b); }
+                    var startTime=when||(node.context?node.context.currentTime:0);
+                    if(origStart) {
+                        var newArgs=[startTime];
+                        if (a) { newArgs.push(a); }
+                        if (b) { newArgs.push(b); }
+                        origStart.apply(node, newArgs);
+                    }
 					if(node.onStart) { node.onStart(when); }
 					return node;
 				};
