@@ -2,8 +2,7 @@
 
 Tony.js is a JavaScript library that makes it easier to work with the Web Audio API.
 
-**WARNING: The APIs for this project are still in a state of flux as we experiment with the most productive ways of using
-the Web Audio API.**
+**WARNING: This project is obsolete. There are plans for the Web Audio API to change the method of creating audio nodes from the current "factory methods" technique - to using proper constructors.**
 
 ## Examples
 
@@ -14,6 +13,6 @@ the Web Audio API.**
 
 ## License
 
-Copyright (c) 2014 Andy Harman and Pendragon Software Limited.
+Copyright (c) 2014-15 Andy Harman and Pendragon Software Limited.
 
 Released under the MIT License.
